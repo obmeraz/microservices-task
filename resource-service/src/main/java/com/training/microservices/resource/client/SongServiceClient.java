@@ -2,6 +2,8 @@ package com.training.microservices.resource.client;
 
 import com.training.microservices.resource.dto.SongMetadataRequest;
 import com.training.microservices.resource.exception.SongServiceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class SongServiceClient {
+
+    private static final Logger log = LoggerFactory.getLogger(SongServiceClient.class);
 
     private final RestClient restClient;
 
@@ -28,6 +32,7 @@ public class SongServiceClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException ex) {
+            log.error("Failed to create song metadata via Song Service", ex);
             throw new SongServiceException("Failed to create song metadata");
         }
     }
@@ -50,6 +55,7 @@ public class SongServiceClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException ex) {
+            log.error("Failed to delete song metadata via Song Service", ex);
             throw new SongServiceException("Failed to delete song metadata");
         }
     }
