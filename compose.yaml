@@ -1,4 +1,12 @@
 services:
+  eureka-server:
+    build: ./eureka-server
+    platform: linux/amd64
+    ports:
+      - "${EUREKA_SERVER_PORT}:8761"
+    environment:
+      EUREKA_SERVER_PORT: 8761
+
   resource-db:
     image: postgres:17-alpine
     environment:
@@ -25,12 +33,14 @@ services:
     build: ./song-service
     platform: linux/amd64
     ports:
-      - "${SONG_SERVICE_PORT}:8081"
+      - "8081"
     environment:
       SPRING_DATASOURCE_URL: ${SONG_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
     depends_on:
+      - eureka-server
       - song-db
 
   resource-service:
@@ -42,7 +52,8 @@ services:
       SPRING_DATASOURCE_URL: ${RESOURCE_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SONG_SERVICE_BASE_URL: ${SONG_SERVICE_BASE_URL}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
     depends_on:
+      - eureka-server
       - resource-db
       - song-service
