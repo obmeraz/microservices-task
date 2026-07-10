@@ -62,6 +62,15 @@ services:
       - resource-db
       - song-service
 
+  resource-processor:
+    build: ./resource-processor
+    platform: linux/amd64
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      EUREKA_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      - eureka-server
+
   localstack:
     image: localstack/localstack:3.4.0
     ports:
