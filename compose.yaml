@@ -50,12 +50,32 @@ services:
     ports:
       - "${RESOURCE_SERVICE_PORT}:8080"
     environment:
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
       SPRING_DATASOURCE_URL: ${RESOURCE_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
     depends_on:
+      - localstack
       - eureka-server
       - resource-db
       - song-service
+
+  resource-processor:
+    build: ./resource-processor
+    platform: linux/amd64
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      EUREKA_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      - eureka-server
+
+  localstack:
+    image: localstack/localstack:3.4.0
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+    volumes:
+      - ./init-scripts/localstack:/etc/localstack/init/ready.d

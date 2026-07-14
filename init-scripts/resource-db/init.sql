@@ -1,4 +1,4 @@
 CREATE TABLE IF NOT EXISTS resources (
     id   BIGSERIAL PRIMARY KEY,
-    data BYTEA NOT NULL
+    storage_key VARCHAR(512) NOT NULL
 );

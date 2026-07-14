@@ -15,8 +15,8 @@ public class ResourceEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "bytea")
-    private byte[] data;
+    @Column(name = "storage_key", nullable = false)
+    private String storageKey;
 
     public Long getId() {
         return id;
@@ -26,11 +26,11 @@ public class ResourceEntity {
         this.id = id;
     }
 
-    public byte[] getData() {
-        return data;
+    public String getStorageKey() {
+        return storageKey;
     }
 
-    public void setData(byte[] data) {
-        this.data = data;
+    public void setStorageKey(String storageKey) {
+        this.storageKey = storageKey;
     }
 }
