@@ -1,4 +1,4 @@
-package com.training.microservices.resource.config;
+package com.training.microservices.processor.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
@@ -15,7 +15,7 @@ public class RestClientConfig {
         return RestClient.builder();
     }
 
-    @Bean
+    @Bean("songServiceRestClient")
     public RestClient songServiceRestClient(
             RestClient.Builder loadBalancedRestClientBuilder,
             @Value("${song.service.name}") String songServiceName
@@ -23,6 +23,17 @@ public class RestClientConfig {
         return loadBalancedRestClientBuilder
                 .clone()
                 .baseUrl("http://" + songServiceName)
+                .build();
+    }
+
+    @Bean("resourceServiceRestClient")
+    public RestClient resourceServiceRestClient(
+            RestClient.Builder loadBalancedRestClientBuilder,
+            @Value("${resource.service.name}") String resourceServiceName
+    ) {
+        return loadBalancedRestClientBuilder
+                .clone()
+                .baseUrl("http://" + resourceServiceName)
                 .build();
     }
 }
