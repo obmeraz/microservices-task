@@ -1,7 +1,7 @@
-package com.training.microservices.resource.mapper;
+package com.training.microservices.processor.mapper;
 
-import com.training.microservices.resource.dto.SongMetadataRequest;
-import com.training.microservices.resource.service.Mp3MetadataExtractor.ExtractedMetadata;
+import com.training.microservices.processor.dto.SongMetadataRequest;
+import com.training.microservices.processor.service.Mp3MetadataExtractor.ExtractedMetadata;
 import org.springframework.stereotype.Component;
 
 @Component

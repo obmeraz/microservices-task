@@ -3,13 +3,11 @@ package com.training.microservices.resource.service.impl;
 import com.training.microservices.resource.client.SongServiceClient;
 import com.training.microservices.resource.dto.IdResponse;
 import com.training.microservices.resource.dto.IdsResponse;
-import com.training.microservices.resource.dto.SongMetadataRequest;
 import com.training.microservices.resource.entity.ResourceEntity;
 import com.training.microservices.resource.exception.BadRequestException;
 import com.training.microservices.resource.exception.ResourceNotFoundException;
-import com.training.microservices.resource.mapper.SongMetadataMapper;
+import com.training.microservices.resource.messaging.ResourceUploadedPublisher;
 import com.training.microservices.resource.repository.ResourceRepository;
-import com.training.microservices.resource.service.Mp3MetadataExtractor;
 import com.training.microservices.resource.service.Mp3StorageService;
 import com.training.microservices.resource.service.Mp3Validator;
 import com.training.microservices.resource.service.ResourceService;
@@ -29,25 +27,22 @@ public class ResourceServiceImpl implements ResourceService {
 
     private final ResourceRepository resourceRepository;
     private final Mp3Validator mp3Validator;
-    private final Mp3MetadataExtractor mp3MetadataExtractor;
-    private final SongMetadataMapper songMetadataMapper;
     private final SongServiceClient songServiceClient;
     private final Mp3StorageService mp3StorageService;
+    private final ResourceUploadedPublisher resourceUploadedPublisher;
 
     public ResourceServiceImpl(
             ResourceRepository resourceRepository,
             Mp3Validator mp3Validator,
-            Mp3MetadataExtractor mp3MetadataExtractor,
-            SongMetadataMapper songMetadataMapper,
             SongServiceClient songServiceClient,
-            Mp3StorageService mp3StorageService
+            Mp3StorageService mp3StorageService,
+            ResourceUploadedPublisher resourceUploadedPublisher
     ) {
         this.resourceRepository = resourceRepository;
         this.mp3Validator = mp3Validator;
-        this.mp3MetadataExtractor = mp3MetadataExtractor;
-        this.songMetadataMapper = songMetadataMapper;
         this.songServiceClient = songServiceClient;
         this.mp3StorageService = mp3StorageService;
+        this.resourceUploadedPublisher = resourceUploadedPublisher;
     }
 
     @Override
@@ -60,7 +55,6 @@ public class ResourceServiceImpl implements ResourceService {
         }
 
         mp3Validator.validate(mp3Data);
-        Mp3MetadataExtractor.ExtractedMetadata extractedMetadata = mp3MetadataExtractor.extract(mp3Data);
 
         String storageKey = StorageKeyGenerator.generate();
         ResourceEntity entity = new ResourceEntity();
@@ -68,9 +62,7 @@ public class ResourceServiceImpl implements ResourceService {
         ResourceEntity saved = resourceRepository.save(entity);
         mp3StorageService.upload(mp3Data, storageKey);
 
-        SongMetadataRequest songMetadataRequest =
-                songMetadataMapper.toSongMetadataRequest(saved.getId(), extractedMetadata);
-        songServiceClient.createSongMetadata(songMetadataRequest);
+        resourceUploadedPublisher.publish(saved.getId());
 
         return new IdResponse(saved.getId());
     }

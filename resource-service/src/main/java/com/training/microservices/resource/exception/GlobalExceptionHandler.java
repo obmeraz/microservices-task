@@ -78,6 +78,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("Invalid request body", "400", null));
     }
 
+    @ExceptionHandler(MessagePublishException.class)
+    public ResponseEntity<ErrorResponse> handleMessagePublish(MessagePublishException ex) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(ex.getMessage(), "500", null));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         return ResponseEntity
