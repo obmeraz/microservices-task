@@ -33,7 +33,7 @@ services:
     build: ./song-service
     platform: linux/amd64
     ports:
-      - "8081"
+      - "${SONG_SERVICE_PORT}:8081"
     environment:
       SPRING_DATASOURCE_URL: ${SONG_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}

@@ -7,7 +7,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class Mp3Validator {
 
-    private final Tika tika = new Tika();
+    private final Tika tika;
+
+    public Mp3Validator() {
+        this(new Tika());
+    }
+
+    Mp3Validator(Tika tika) {
+        this.tika = tika;
+    }
 
     public void validate(byte[] mp3Data) {
         if (mp3Data == null || mp3Data.length == 0) {

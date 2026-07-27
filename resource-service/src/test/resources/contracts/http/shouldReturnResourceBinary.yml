@@ -1,0 +1,9 @@
+name: shouldReturnResourceBinary
+request:
+  method: GET
+  url: /resources/1
+response:
+  status: 200
+  headers:
+    Content-Type: audio/mpeg
+  bodyFromFileAsBytes: resource.bin
