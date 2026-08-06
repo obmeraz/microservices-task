@@ -4,6 +4,12 @@ services:
     platform: linux/amd64
     ports:
       - "${EUREKA_SERVER_PORT}:8761"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     environment:
       EUREKA_SERVER_PORT: 8761
 
@@ -15,6 +21,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "${RESOURCE_DB_PORT}:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./init-scripts/resource-db:/docker-entrypoint-initdb.d
 
@@ -26,6 +38,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "${SONG_DB_PORT}:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./init-scripts/song-db:/docker-entrypoint-initdb.d
 
@@ -34,6 +52,12 @@ services:
     platform: linux/amd64
     ports:
       - "${SONG_SERVICE_PORT}:8081"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     environment:
       SPRING_DATASOURCE_URL: ${SONG_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -41,14 +65,22 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
     depends_on:
-      - eureka-server
-      - song-db
+      eureka-server:
+        condition: service_healthy
+      song-db:
+        condition: service_healthy
 
   resource-service:
     build: ./resource-service
     platform: linux/amd64
     ports:
       - "${RESOURCE_SERVICE_PORT}:8080"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     environment:
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
       SPRING_DATASOURCE_URL: ${RESOURCE_DB_URL}
@@ -61,15 +93,28 @@ services:
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
     depends_on:
-      - localstack
-      - eureka-server
-      - rabbitmq
-      - resource-db
-      - song-service
+      resource-db:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      song-service:
+        condition: service_healthy
 
   resource-processor:
     build: ./resource-processor
     platform: linux/amd64
+    ports:
+      - "${RESOURCE_PROCESSOR_PORT}:8082"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
@@ -78,8 +123,14 @@ services:
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
     depends_on:
-      - eureka-server
-      - rabbitmq
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      resource-service:
+        condition: service_healthy
+      song-service:
+        condition: service_healthy
 
   localstack:
     image: localstack/localstack:3.4.0
@@ -89,6 +140,12 @@ services:
       - SERVICES=s3
     volumes:
       - ./init-scripts/localstack:/etc/localstack/init/ready.d
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health | grep -q '\"s3\": \"running\"' || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -102,6 +159,12 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "rabbitmq-diagnostics -q check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   rabbitmq_data:
