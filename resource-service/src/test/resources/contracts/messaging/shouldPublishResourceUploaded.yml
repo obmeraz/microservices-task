@@ -1,0 +1,9 @@
+name: shouldPublishResourceUploaded
+label: resource_uploaded
+input:
+  triggeredBy: publishResourceUploadedEvent()
+outputMessage:
+  sentTo: resource.uploaded
+  body: 1
+  headers:
+    contentType: application/json
