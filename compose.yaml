@@ -1,29 +1,27 @@
 services:
   eureka-server:
     build: ./eureka-server
-    platform: linux/amd64
     ports:
       - "${EUREKA_SERVER_PORT}:8761"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8761/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       EUREKA_SERVER_PORT: 8761
 
   api-gateway:
     build: ./api-gateway
-    platform: linux/amd64
     ports:
       - "${API_GATEWAY_PORT}:8083"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
@@ -67,15 +65,12 @@ services:
 
   song-service:
     build: ./song-service
-    platform: linux/amd64
-    ports:
-      - "${SONG_SERVICE_PORT}:8081"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8081/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       SPRING_DATASOURCE_URL: ${SONG_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -90,15 +85,12 @@ services:
 
   resource-service:
     build: ./resource-service
-    platform: linux/amd64
-    ports:
-      - "${RESOURCE_SERVICE_PORT}:8080"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
       SPRING_DATASOURCE_URL: ${RESOURCE_DB_URL}
@@ -124,15 +116,12 @@ services:
 
   resource-processor:
     build: ./resource-processor
-    platform: linux/amd64
-    ports:
-      - "${RESOURCE_PROCESSOR_PORT}:8082"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
