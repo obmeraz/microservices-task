@@ -1,17 +1,57 @@
 services:
   eureka-server:
     build: ./eureka-server
-    platform: linux/amd64
     ports:
       - "${EUREKA_SERVER_PORT}:8761"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8761/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       EUREKA_SERVER_PORT: 8761
+
+  config-server:
+    build: ./config-server
+    ports:
+      - "${CONFIG_SERVER_PORT}:8888"
+    volumes:
+      - ../microservices-config-server:/configs:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8888/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/configs/common,file:/configs/{application}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      EUREKA_PREFER_IP_ADDRESS: "true"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "${API_GATEWAY_PORT}:8083"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      EUREKA_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
 
   resource-db:
     image: postgres:17-alpine
@@ -49,38 +89,35 @@ services:
 
   song-service:
     build: ./song-service
-    platform: linux/amd64
-    ports:
-      - "${SONG_SERVICE_PORT}:8081"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8081/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       SPRING_DATASOURCE_URL: ${SONG_DB_URL}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
     depends_on:
       eureka-server:
+        condition: service_healthy
+      config-server:
         condition: service_healthy
       song-db:
         condition: service_healthy
 
   resource-service:
     build: ./resource-service
-    platform: linux/amd64
-    ports:
-      - "${RESOURCE_SERVICE_PORT}:8080"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
       SPRING_DATASOURCE_URL: ${RESOURCE_DB_URL}
@@ -88,6 +125,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
       SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST}
       SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT}
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
@@ -101,29 +139,33 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      config-server:
+        condition: service_healthy
       song-service:
         condition: service_healthy
 
   resource-processor:
     build: ./resource-processor
-    platform: linux/amd64
     ports:
       - "${RESOURCE_PROCESSOR_PORT}:8082"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      start_period: 90s
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
       SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST}
       SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT}
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
     depends_on:
       eureka-server:
+        condition: service_healthy
+      config-server:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy

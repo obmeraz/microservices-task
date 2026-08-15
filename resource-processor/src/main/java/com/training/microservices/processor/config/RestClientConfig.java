@@ -2,6 +2,7 @@ package com.training.microservices.processor.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -15,6 +16,7 @@ public class RestClientConfig {
         return RestClient.builder();
     }
 
+    @RefreshScope
     @Bean("songServiceRestClient")
     public RestClient songServiceRestClient(
             RestClient.Builder loadBalancedRestClientBuilder,
@@ -26,6 +28,7 @@ public class RestClientConfig {
                 .build();
     }
 
+    @RefreshScope
     @Bean("resourceServiceRestClient")
     public RestClient resourceServiceRestClient(
             RestClient.Builder loadBalancedRestClientBuilder,
