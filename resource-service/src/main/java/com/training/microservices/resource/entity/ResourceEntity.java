@@ -18,6 +18,15 @@ public class ResourceEntity {
     @Column(name = "storage_key", nullable = false)
     private String storageKey;
 
+    @Column(name = "storage_type", nullable = false, length = 32)
+    private String storageType;
+
+    @Column(nullable = false, length = 100)
+    private String bucket;
+
+    @Column(nullable = false, length = 100)
+    private String path;
+
     public Long getId() {
         return id;
     }
@@ -32,5 +41,29 @@ public class ResourceEntity {
 
     public void setStorageKey(String storageKey) {
         this.storageKey = storageKey;
+    }
+
+    public String getStorageType() {
+        return storageType;
+    }
+
+    public void setStorageType(String storageType) {
+        this.storageType = storageType;
+    }
+
+    public String getBucket() {
+        return bucket;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 }

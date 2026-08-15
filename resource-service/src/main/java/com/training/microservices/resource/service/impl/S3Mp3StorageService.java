@@ -2,12 +2,12 @@ package com.training.microservices.resource.service.impl;
 
 import com.training.microservices.resource.service.Mp3StorageService;
 import com.training.microservices.resource.util.S3ExceptionMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -18,25 +18,20 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 public class S3Mp3StorageService implements Mp3StorageService {
 
     private final S3Client s3Client;
-    private final String bucketName;
 
-    public S3Mp3StorageService(S3Client s3Client, @Value("${aws.s3.bucket-name}") String bucketName) {
+    public S3Mp3StorageService(S3Client s3Client) {
         this.s3Client = s3Client;
-        this.bucketName = bucketName;
     }
 
     @Override
-    public void upload(byte[] mp3Data, String storageKey) {
-        if (mp3Data == null || mp3Data.length == 0) {
-            throw new IllegalArgumentException("Byte array cannot be empty");
-        }
-        if (storageKey == null || storageKey.isBlank()) {
-            throw new IllegalArgumentException("Storage key cannot be empty");
-        }
+    public void upload(byte[] mp3Data, String bucket, String storageKey) {
+        validatePayload(mp3Data);
+        validateBucket(bucket);
+        validateStorageKey(storageKey);
 
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bucket)
                     .key(storageKey)
                     .contentType("audio/mpeg")
                     .build();
@@ -48,14 +43,13 @@ public class S3Mp3StorageService implements Mp3StorageService {
     }
 
     @Override
-    public byte[] download(String storageKey) {
-        if (storageKey == null || storageKey.isBlank()) {
-            throw new IllegalArgumentException("Storage key cannot be empty");
-        }
+    public byte[] download(String bucket, String storageKey) {
+        validateBucket(bucket);
+        validateStorageKey(storageKey);
 
         try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bucket)
                     .key(storageKey)
                     .build();
 
@@ -69,20 +63,58 @@ public class S3Mp3StorageService implements Mp3StorageService {
     }
 
     @Override
-    public void remove(String storageKey) {
-        if (storageKey == null || storageKey.isBlank()) {
-            throw new IllegalArgumentException("Storage key cannot be empty");
-        }
+    public void remove(String bucket, String storageKey) {
+        validateBucket(bucket);
+        validateStorageKey(storageKey);
 
         try {
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bucket)
                     .key(storageKey)
                     .build();
 
             s3Client.deleteObject(deleteObjectRequest);
         } catch (S3Exception e) {
             throw S3ExceptionMapper.map(e, "delete");
+        }
+    }
+
+    @Override
+    public void move(String sourceBucket, String sourceKey, String targetBucket, String targetKey) {
+        validateBucket(sourceBucket);
+        validateBucket(targetBucket);
+        validateStorageKey(sourceKey);
+        validateStorageKey(targetKey);
+
+        try {
+            CopyObjectRequest copyObjectRequest = CopyObjectRequest.builder()
+                    .sourceBucket(sourceBucket)
+                    .sourceKey(sourceKey)
+                    .destinationBucket(targetBucket)
+                    .destinationKey(targetKey)
+                    .build();
+            s3Client.copyObject(copyObjectRequest);
+            remove(sourceBucket, sourceKey);
+        } catch (S3Exception e) {
+            throw S3ExceptionMapper.map(e, "move");
+        }
+    }
+
+    private static void validatePayload(byte[] mp3Data) {
+        if (mp3Data == null || mp3Data.length == 0) {
+            throw new IllegalArgumentException("Byte array cannot be empty");
+        }
+    }
+
+    private static void validateBucket(String bucket) {
+        if (bucket == null || bucket.isBlank()) {
+            throw new IllegalArgumentException("Bucket cannot be empty");
+        }
+    }
+
+    private static void validateStorageKey(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new IllegalArgumentException("Storage key cannot be empty");
         }
     }
 }

@@ -10,6 +10,18 @@ public final class StorageKeyGenerator {
     }
 
     public static String generate() {
-        return UUID.randomUUID() + MP3_EXTENSION;
+        return generate(null);
+    }
+
+    public static String generate(String path) {
+        String fileName = UUID.randomUUID() + MP3_EXTENSION;
+        if (path == null || path.isBlank() || "/".equals(path.trim())) {
+            return fileName;
+        }
+
+        String normalized = path.trim()
+                .replaceAll("^/+", "")
+                .replaceAll("/+$", "");
+        return normalized.isEmpty() ? fileName : normalized + "/" + fileName;
     }
 }

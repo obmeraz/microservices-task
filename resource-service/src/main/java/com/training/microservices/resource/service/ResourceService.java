@@ -10,4 +10,6 @@ public interface ResourceService {
     byte[] getById(Long id);
 
     IdsResponse deleteByIds(String idsParameter);
+
+    void moveToPermanent(Long id);
 }

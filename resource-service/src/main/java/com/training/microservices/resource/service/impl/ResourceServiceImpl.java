@@ -1,11 +1,14 @@
 package com.training.microservices.resource.service.impl;
 
 import com.training.microservices.resource.client.SongServiceClient;
+import com.training.microservices.resource.client.StorageServiceClient;
 import com.training.microservices.resource.dto.IdResponse;
 import com.training.microservices.resource.dto.IdsResponse;
+import com.training.microservices.resource.dto.StorageDto;
 import com.training.microservices.resource.entity.ResourceEntity;
 import com.training.microservices.resource.exception.BadRequestException;
 import com.training.microservices.resource.exception.ResourceNotFoundException;
+import com.training.microservices.resource.exception.StorageServiceException;
 import com.training.microservices.resource.messaging.ResourceUploadedPublisher;
 import com.training.microservices.resource.repository.ResourceRepository;
 import com.training.microservices.resource.service.Mp3StorageService;
@@ -25,9 +28,13 @@ import java.util.Optional;
 @Service
 public class ResourceServiceImpl implements ResourceService {
 
+    public static final String STORAGE_TYPE_STAGING = "STAGING";
+    public static final String STORAGE_TYPE_PERMANENT = "PERMANENT";
+
     private final ResourceRepository resourceRepository;
     private final Mp3Validator mp3Validator;
     private final SongServiceClient songServiceClient;
+    private final StorageServiceClient storageServiceClient;
     private final Mp3StorageService mp3StorageService;
     private final ResourceUploadedPublisher resourceUploadedPublisher;
 
@@ -35,12 +42,14 @@ public class ResourceServiceImpl implements ResourceService {
             ResourceRepository resourceRepository,
             Mp3Validator mp3Validator,
             SongServiceClient songServiceClient,
+            StorageServiceClient storageServiceClient,
             Mp3StorageService mp3StorageService,
             ResourceUploadedPublisher resourceUploadedPublisher
     ) {
         this.resourceRepository = resourceRepository;
         this.mp3Validator = mp3Validator;
         this.songServiceClient = songServiceClient;
+        this.storageServiceClient = storageServiceClient;
         this.mp3StorageService = mp3StorageService;
         this.resourceUploadedPublisher = resourceUploadedPublisher;
     }
@@ -56,11 +65,17 @@ public class ResourceServiceImpl implements ResourceService {
 
         mp3Validator.validate(mp3Data);
 
-        String storageKey = StorageKeyGenerator.generate();
+        StorageDto stagingStorage = requireStorage(STORAGE_TYPE_STAGING);
+        String storageKey = StorageKeyGenerator.generate(stagingStorage.path());
+
+        mp3StorageService.upload(mp3Data, stagingStorage.bucket(), storageKey);
+
         ResourceEntity entity = new ResourceEntity();
         entity.setStorageKey(storageKey);
+        entity.setStorageType(stagingStorage.storageType());
+        entity.setBucket(stagingStorage.bucket());
+        entity.setPath(stagingStorage.path());
         ResourceEntity saved = resourceRepository.save(entity);
-        mp3StorageService.upload(mp3Data, storageKey);
 
         resourceUploadedPublisher.publish(saved.getId());
 
@@ -74,7 +89,7 @@ public class ResourceServiceImpl implements ResourceService {
 
         ResourceEntity entity = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource with ID=" + id + " not found"));
-        return mp3StorageService.download(entity.getStorageKey());
+        return mp3StorageService.download(entity.getBucket(), entity.getStorageKey());
     }
 
     @Override
@@ -87,8 +102,7 @@ public class ResourceServiceImpl implements ResourceService {
             Optional<ResourceEntity> entity = resourceRepository.findById(id);
             if (entity.isPresent()) {
                 ResourceEntity resourceEntity = entity.get();
-                String storageKey = resourceEntity.getStorageKey();
-                mp3StorageService.remove(storageKey);
+                mp3StorageService.remove(resourceEntity.getBucket(), resourceEntity.getStorageKey());
                 resourceRepository.deleteById(id);
                 deletedIds.add(id);
             }
@@ -96,5 +110,40 @@ public class ResourceServiceImpl implements ResourceService {
 
         songServiceClient.deleteSongMetadata(deletedIds);
         return new IdsResponse(deletedIds);
+    }
+
+    @Override
+    @Transactional
+    public void moveToPermanent(Long id) {
+        IdValidator.validatePositiveId(id);
+
+        ResourceEntity entity = resourceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Resource with ID=" + id + " not found"));
+
+        if (STORAGE_TYPE_PERMANENT.equals(entity.getStorageType())) {
+            return;
+        }
+
+        StorageDto permanentStorage = requireStorage(STORAGE_TYPE_PERMANENT);
+        String sourceBucket = entity.getBucket();
+        String sourceKey = entity.getStorageKey();
+        String targetKey = StorageKeyGenerator.generate(permanentStorage.path());
+
+        mp3StorageService.move(sourceBucket, sourceKey, permanentStorage.bucket(), targetKey);
+
+        entity.setStorageType(permanentStorage.storageType());
+        entity.setBucket(permanentStorage.bucket());
+        entity.setPath(permanentStorage.path());
+        entity.setStorageKey(targetKey);
+        resourceRepository.save(entity);
+    }
+
+    private StorageDto requireStorage(String storageType) {
+        return storageServiceClient.getStorages().stream()
+                .filter(storage -> storageType.equals(storage.storageType()))
+                .findFirst()
+                .orElseThrow(() -> new StorageServiceException(
+                        "Storage definition not found for type=" + storageType
+                ));
     }
 }
