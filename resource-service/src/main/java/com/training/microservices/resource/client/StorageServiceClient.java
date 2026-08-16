@@ -2,12 +2,11 @@ package com.training.microservices.resource.client;
 
 import com.training.microservices.resource.dto.StorageDto;
 import com.training.microservices.resource.exception.StorageServiceException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -29,11 +28,7 @@ public class StorageServiceClient {
         this.restClient = storageServiceRestClient;
     }
 
-    @Retryable(
-            retryFor = {StorageServiceException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 1000, multiplier = 2, random = true)
-    )
+    @CircuitBreaker(name = "storageService", fallbackMethod = "getStoragesFallback")
     public List<StorageDto> getStorages() {
         try {
             List<StorageDto> storages = restClient.get()
@@ -42,8 +37,14 @@ public class StorageServiceClient {
                     .body(STORAGE_LIST_TYPE);
             return storages != null ? storages : List.of();
         } catch (RestClientException ex) {
-            log.error("Failed to get storages", ex);
+            log.error("Failed to get storages from Storage Service", ex);
             throw new StorageServiceException("Failed to get storages", ex);
         }
+    }
+
+    private List<StorageDto> getStoragesFallback(Throwable ex) {
+        log.warn("Circuit breaker fallback for Storage Service. Returning stub storages. cause={}",
+                ex.toString());
+        return StorageServiceFallback.stubStorages();
     }
 }
