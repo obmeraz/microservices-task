@@ -87,6 +87,23 @@ services:
     volumes:
       - ./init-scripts/song-db:/docker-entrypoint-initdb.d
 
+  storage-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${STORAGE_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${STORAGE_DB_PORT}:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./init-scripts/storage-db:/docker-entrypoint-initdb.d
+
   song-service:
     build: ./song-service
     healthcheck:
@@ -143,6 +160,8 @@ services:
         condition: service_healthy
       song-service:
         condition: service_healthy
+      storage-service:
+        condition: service_healthy
 
   resource-processor:
     build: ./resource-processor
@@ -172,6 +191,31 @@ services:
       resource-service:
         condition: service_healthy
       song-service:
+        condition: service_healthy
+
+  storage-service:
+    build: ./storage-service
+    ports:
+      - "${STORAGE_SERVICE_PORT}:8084"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8084/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    environment:
+      SPRING_DATASOURCE_URL: ${STORAGE_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      EUREKA_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      storage-db:
         condition: service_healthy
 
   localstack:

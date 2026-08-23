@@ -1,4 +1,4 @@
-package com.training.microservices.resource.entity;
+package com.training.microservices.storageservice.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,17 +8,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "resources")
-public class ResourceEntity {
+@Table(name = "storages")
+public class StorageEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "storage_key", nullable = false)
-    private String storageKey;
-
-    @Column(name = "storage_type", nullable = false, length = 32)
+    @Column(nullable = false, length = 100)
     private String storageType;
 
     @Column(nullable = false, length = 100)
@@ -33,14 +30,6 @@ public class ResourceEntity {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getStorageKey() {
-        return storageKey;
-    }
-
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
     }
 
     public String getStorageType() {

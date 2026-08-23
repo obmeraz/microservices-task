@@ -5,6 +5,7 @@ import com.training.microservices.processor.client.SongServiceClient;
 import com.training.microservices.processor.dto.SongMetadataRequest;
 import com.training.microservices.processor.exception.ResourceServiceException;
 import com.training.microservices.processor.mapper.SongMetadataMapper;
+import com.training.microservices.processor.publisher.ResourceProcessedEventPublisher;
 import com.training.microservices.processor.service.Mp3MetadataExtractor;
 import com.training.microservices.processor.service.ResourceProcessingService;
 import org.springframework.stereotype.Service;
@@ -16,15 +17,18 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
     private final Mp3MetadataExtractor mp3MetadataExtractor;
     private final SongMetadataMapper songMetadataMapper;
     private final SongServiceClient songServiceClient;
+    private final ResourceProcessedEventPublisher resourceProcessedEventPublisher;
 
     public ResourceProcessingServiceImpl(ResourceServiceClient resourceServiceClient,
                                          Mp3MetadataExtractor mp3MetadataExtractor,
                                          SongMetadataMapper songMetadataMapper,
-                                         SongServiceClient songServiceClient) {
+                                         SongServiceClient songServiceClient,
+                                         ResourceProcessedEventPublisher resourceProcessedEventPublisher) {
         this.resourceServiceClient = resourceServiceClient;
         this.mp3MetadataExtractor = mp3MetadataExtractor;
         this.songMetadataMapper = songMetadataMapper;
         this.songServiceClient = songServiceClient;
+        this.resourceProcessedEventPublisher = resourceProcessedEventPublisher;
     }
 
     @Override
@@ -37,5 +41,6 @@ public class ResourceProcessingServiceImpl implements ResourceProcessingService 
         SongMetadataRequest songMetadataRequest =
                 songMetadataMapper.toSongMetadataRequest(resourceId, extract);
         songServiceClient.createSongMetadata(songMetadataRequest);
+        resourceProcessedEventPublisher.publish(resourceId);
     }
 }

@@ -15,6 +15,9 @@ public class GatewayConfig {
     @Value("${resource.service.name}")
     private String resourceServiceName;
 
+    @Value("${storage.service.name}")
+    private String storageServiceName;
+
     @Bean
     public RouteLocator gatewayRoutes(RouteLocatorBuilder builder) {
         return builder.routes()
@@ -24,6 +27,9 @@ public class GatewayConfig {
                 ).route(
                         "songs", r -> r.path("/songs/**")
                                 .uri("lb://" + songServiceName)
+                ).route(
+                        "storage", r -> r.path("/storages/**")
+                                .uri("lb://" + storageServiceName)
                 ).build();
 
     }

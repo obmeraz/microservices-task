@@ -27,7 +27,7 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 @DisplayName("S3 Local stack integration test with test container")
 class S3Mp3StorageServiceTest {
 
-    private static final String BUCKET_NAME = "resource-service-mp3";
+    private static final String BUCKET_NAME = "staging-storage";
 
     @Container
     static LocalStackContainer localStackContainer = new LocalStackContainer(
@@ -40,7 +40,6 @@ class S3Mp3StorageServiceTest {
         registry.add("aws.s3.region", localStackContainer::getRegion);
         registry.add("aws.s3.access-key", localStackContainer::getAccessKey);
         registry.add("aws.s3.secret-key", localStackContainer::getSecretKey);
-        registry.add("aws.s3.bucket-name", () -> BUCKET_NAME);
     }
 
     @Autowired
@@ -51,101 +50,112 @@ class S3Mp3StorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        ensureBucketExists();
+        ensureBucketExists(BUCKET_NAME);
     }
 
     @Test
     void test_UploadAndDownload_ReturnSameBytes() {
-        // given
         byte[] mp3Data = new byte[]{1, 2, 3, 4, 5};
-        String storageKey = "integration-upload-download.mp3";
+        String storageKey = "files/integration-upload-download.mp3";
 
-        // when
-        s3Mp3StorageService.upload(mp3Data, storageKey);
-        byte[] downloaded = s3Mp3StorageService.download(storageKey);
+        s3Mp3StorageService.upload(mp3Data, BUCKET_NAME, storageKey);
+        byte[] downloaded = s3Mp3StorageService.download(BUCKET_NAME, storageKey);
 
-        // then
         assertThat(downloaded).isEqualTo(mp3Data);
     }
 
     @Test
     void test_Remove_DeletesObject() {
-        // given
         byte[] mp3Data = new byte[]{9, 8, 7};
-        String storageKey = "integration-remove.mp3";
-        s3Mp3StorageService.upload(mp3Data, storageKey);
+        String storageKey = "files/integration-remove.mp3";
+        s3Mp3StorageService.upload(mp3Data, BUCKET_NAME, storageKey);
 
-        // when
-        s3Mp3StorageService.remove(storageKey);
+        s3Mp3StorageService.remove(BUCKET_NAME, storageKey);
 
-        // then
-        assertThatThrownBy(() -> s3Mp3StorageService.download(storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.download(BUCKET_NAME, storageKey))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Resource file not found in storage");
     }
 
     @Test
+    void test_Move_CopiesToTargetAndRemovesSource() {
+        String permanentBucket = "permanent-storage";
+        ensureBucketExists(permanentBucket);
+
+        byte[] mp3Data = new byte[]{1, 2, 3};
+        String sourceKey = "files/source.mp3";
+        String targetKey = "files/target.mp3";
+        s3Mp3StorageService.upload(mp3Data, BUCKET_NAME, sourceKey);
+
+        s3Mp3StorageService.move(BUCKET_NAME, sourceKey, permanentBucket, targetKey);
+
+        assertThat(s3Mp3StorageService.download(permanentBucket, targetKey)).isEqualTo(mp3Data);
+        assertThatThrownBy(() -> s3Mp3StorageService.download(BUCKET_NAME, sourceKey))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
     void test_DownloadWhenKeyMissing_ReturnResourceNotFoundException() {
-        // given
         String storageKey = "missing-key.mp3";
 
-        // when & then
-        assertThatThrownBy(() -> s3Mp3StorageService.download(storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.download(BUCKET_NAME, storageKey))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Resource file not found in storage");
     }
 
     @Test
     void test_UploadWhenDataEmpty_ReturnException() {
-        // given
         byte[] mp3Data = new byte[]{};
         String storageKey = "empty.mp3";
 
-        // when & then
-        assertThatThrownBy(() -> s3Mp3StorageService.upload(mp3Data, storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.upload(mp3Data, BUCKET_NAME, storageKey))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Byte array cannot be empty");
     }
 
     @Test
     void test_UploadWhenStorageKeyBlank_ReturnException() {
-        // given
         byte[] mp3Data = new byte[]{1, 2, 3};
         String storageKey = "  ";
 
-        // when & then
-        assertThatThrownBy(() -> s3Mp3StorageService.upload(mp3Data, storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.upload(mp3Data, BUCKET_NAME, storageKey))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Storage key cannot be empty");
     }
 
     @Test
+    void test_UploadWhenBucketBlank_ReturnException() {
+        byte[] mp3Data = new byte[]{1, 2, 3};
+        String storageKey = "file.mp3";
+
+        assertThatThrownBy(() -> s3Mp3StorageService.upload(mp3Data, " ", storageKey))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Bucket cannot be empty");
+    }
+
+    @Test
     void test_DownloadWhenStorageKeyBlank_ReturnException() {
-        // given
         String storageKey = "";
 
-        // when & then
-        assertThatThrownBy(() -> s3Mp3StorageService.download(storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.download(BUCKET_NAME, storageKey))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Storage key cannot be empty");
     }
 
     @Test
     void test_RemoveWhenStorageKeyBlank_ReturnException() {
-        // given
         String storageKey = null;
 
-        // when & then
-        assertThatThrownBy(() -> s3Mp3StorageService.remove(storageKey))
+        assertThatThrownBy(() -> s3Mp3StorageService.remove(BUCKET_NAME, storageKey))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Storage key cannot be empty");
     }
 
-    private void ensureBucketExists() {
+    private void ensureBucketExists(String bucketName) {
         try {
-            s3Client.headBucket(HeadBucketRequest.builder().bucket(BUCKET_NAME).build());
+            s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
         } catch (NoSuchBucketException ex) {
-            s3Client.createBucket(CreateBucketRequest.builder().bucket(BUCKET_NAME).build());
+            s3Client.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
         }
     }
 }
