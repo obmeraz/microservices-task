@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
+    <springProperty scope="context" name="ELASTICSEARCH_URL" source="ELASTICSEARCH_URL" defaultValue="http://elasticsearch:9200"/>
+
+    <appender name="ELASTIC" class="com.agido.logback.elasticsearch.ElasticsearchAppender">
+        <url>${ELASTICSEARCH_URL}/_bulk</url>
+        <index>microservices-logs-%date{yyyy.MM.dd}</index>
+        <operation>index</operation>
+        <errorLoggerName>es-error-logger</errorLoggerName>
+        <connectTimeout>3000</connectTimeout>
+        <readTimeout>5000</readTimeout>
+        <maxRetries>2</maxRetries>
+        <sleepTime>500</sleepTime>
+        <includeMdc>true</includeMdc>
+        <errorsToStderr>false</errorsToStderr>
+        <headers>
+            <header>
+                <name>Content-Type</name>
+                <value>application/json</value>
+            </header>
+        </headers>
+        <properties>
+            <esProperty>
+                <name>service</name>
+                <value>${APP_NAME}</value>
+            </esProperty>
+            <esProperty>
+                <name>level</name>
+                <value>%level</value>
+            </esProperty>
+            <esProperty>
+                <name>logger</name>
+                <value>%logger</value>
+            </esProperty>
+            <esProperty>
+                <name>thread</name>
+                <value>%thread</value>
+            </esProperty>
+            <esProperty>
+                <name>stacktrace</name>
+                <value>%ex</value>
+                <allowEmpty>true</allowEmpty>
+            </esProperty>
+        </properties>
+    </appender>
+
+    <logger name="es-error-logger" level="OFF"/>
+    <logger name="com.agido.logback.elasticsearch" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ELASTIC"/>
+    </root>
+</configuration>

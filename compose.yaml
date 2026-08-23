@@ -11,6 +11,7 @@ services:
       start_period: 90s
     environment:
       EUREKA_SERVER_PORT: 8761
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
 
   config-server:
     build: ./config-server
@@ -29,6 +30,7 @@ services:
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/configs/common,file:/configs/{application}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -47,6 +49,7 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
       SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -119,6 +122,7 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
       SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -147,6 +151,7 @@ services:
       SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT}
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       resource-db:
         condition: service_healthy
@@ -181,6 +186,7 @@ services:
       SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT}
       SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
       SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -210,6 +216,7 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       EUREKA_PREFER_IP_ADDRESS: "true"
       SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -252,5 +259,53 @@ services:
       retries: 3
       start_period: 15s
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    ports:
+      - "${ELASTICSEARCH_PORT}:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: -Xms256m -Xmx256m
+      cluster.name: microservices-logs
+      # Local dev: avoid RED cluster when host disk is nearly full
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      bootstrap.memory_lock: "false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    ports:
+      - "${KIBANA_PORT}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      xpack.security.enabled: "false"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:5601/api/status || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
 volumes:
   rabbitmq_data:
+  elasticsearch_data:
