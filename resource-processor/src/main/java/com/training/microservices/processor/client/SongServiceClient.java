@@ -39,8 +39,9 @@ public class SongServiceClient {
                     .onStatus(status -> status.value() == HttpStatus.CONFLICT.value(), (req, res) ->
                             log.info("Song metadata already exists for id={}", request.id()))
                     .toBodilessEntity();
+            log.info("Created song metadata via Song Service: id={}", request.id());
         } catch (RestClientException ex) {
-            log.error("Failed to create song metadata via Song Service", ex);
+            log.error("Failed to create song metadata via Song Service: id={}", request.id(), ex);
             throw new SongServiceException("Failed to create song metadata", ex);
         }
     }

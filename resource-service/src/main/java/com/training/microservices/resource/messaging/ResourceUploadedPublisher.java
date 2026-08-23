@@ -29,9 +29,11 @@ public class ResourceUploadedPublisher {
         try {
             boolean sent = streamBridge.send("resourceUploaded-out-0", resourceId);
             if (!sent) {
+                log.warn("StreamBridge returned false for resource.uploaded event: id={}", resourceId);
                 throw new MessagePublishException(
                         "Failed to publish resource.uploaded event for id=" + resourceId);
             }
+            log.info("Published resource.uploaded event for id={}", resourceId);
         } catch (MessagePublishException ex) {
             throw ex;
         } catch (Exception ex) {

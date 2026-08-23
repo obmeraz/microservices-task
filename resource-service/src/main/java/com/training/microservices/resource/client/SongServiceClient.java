@@ -45,8 +45,9 @@ public class SongServiceClient {
                             .build())
                     .retrieve()
                     .toBodilessEntity();
+            log.info("Deleted song metadata via Song Service: ids={}", ids);
         } catch (RestClientException ex) {
-            log.error("Failed to delete song metadata via Song Service", ex);
+            log.error("Failed to delete song metadata via Song Service: ids={}", ids, ex);
             throw new SongServiceException("Failed to delete song metadata");
         }
     }

@@ -28,10 +28,13 @@ public class ResourceServiceClient {
     )
     public byte[] getResourceData(Long resourceId) {
         try {
-            return restClient.get()
+            byte[] data = restClient.get()
                     .uri("/resources/{id}", resourceId)
                     .retrieve()
                     .body(byte[].class);
+            log.info("Fetched resource data: id={}, size={} bytes",
+                    resourceId, data != null ? data.length : 0);
+            return data;
         } catch (RestClientException ex) {
             log.error("Failed to get resource data for id={}", resourceId, ex);
             throw new ResourceServiceException("Failed to get resource data for id=" + resourceId, ex);

@@ -30,9 +30,11 @@ public class ResourceProcessedEventPublisher {
         try {
             boolean sent = streamBridge.send("resourceProcessed-out-0", resourceId);
             if (!sent) {
+                log.warn("StreamBridge returned false for resource.processed event: id={}", resourceId);
                 throw new MessagePublishException(
                         "Failed to publish resource.processed event for id=" + resourceId);
             }
+            log.info("Published resource.processed event for id={}", resourceId);
         } catch (MessagePublishException ex) {
             throw ex;
         } catch (Exception ex) {

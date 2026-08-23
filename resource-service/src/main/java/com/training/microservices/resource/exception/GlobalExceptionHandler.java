@@ -1,6 +1,8 @@
 package com.training.microservices.resource.exception;
 
 import com.training.microservices.resource.util.IdErrorMessages;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,8 +21,15 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
+        if (ex.getStatus().is5xxServerError()) {
+            log.error("API error {}: {}", ex.getErrorCode(), ex.getMessage(), ex);
+        } else {
+            log.warn("API error {}: {}", ex.getErrorCode(), ex.getMessage());
+        }
         return ResponseEntity
                 .status(ex.getStatus())
                 .body(new ErrorResponse(ex.getMessage(), ex.getErrorCode(), null));
@@ -37,6 +46,7 @@ public class GlobalExceptionHandler {
                         (first, second) -> first,
                         LinkedHashMap::new
                 ));
+        log.warn("Validation error: {}", details);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("Validation error", "400", details));
@@ -47,6 +57,7 @@ public class GlobalExceptionHandler {
         String contentType = ex.getContentType() != null
                 ? ex.getContentType().toString()
                 : "unknown";
+        log.warn("Unsupported media type: {}", contentType);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(
@@ -80,6 +91,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MessagePublishException.class)
     public ResponseEntity<ErrorResponse> handleMessagePublish(MessagePublishException ex) {
+        log.error("Message publish failed: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(ex.getMessage(), "500", null));
@@ -87,6 +99,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("An error occurred on the server", "500", null));

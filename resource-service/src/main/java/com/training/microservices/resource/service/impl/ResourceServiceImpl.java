@@ -18,6 +18,8 @@ import com.training.microservices.resource.util.ContentTypeValidator;
 import com.training.microservices.resource.util.IdValidator;
 import com.training.microservices.resource.util.IdsParameterParser;
 import com.training.microservices.resource.util.StorageKeyGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,8 @@ import java.util.Optional;
 
 @Service
 public class ResourceServiceImpl implements ResourceService {
+
+    private static final Logger log = LoggerFactory.getLogger(ResourceServiceImpl.class);
 
     public static final String STORAGE_TYPE_STAGING = "STAGING";
     public static final String STORAGE_TYPE_PERMANENT = "PERMANENT";
@@ -68,6 +72,8 @@ public class ResourceServiceImpl implements ResourceService {
         StorageDto stagingStorage = requireStorage(STORAGE_TYPE_STAGING);
         String storageKey = StorageKeyGenerator.generate(stagingStorage.path());
 
+        log.info("Uploading resource to staging: bucket={}, key={}, size={} bytes",
+                stagingStorage.bucket(), storageKey, mp3Data.length);
         mp3StorageService.upload(mp3Data, stagingStorage.bucket(), storageKey);
 
         ResourceEntity entity = new ResourceEntity();
@@ -79,6 +85,8 @@ public class ResourceServiceImpl implements ResourceService {
 
         resourceUploadedPublisher.publish(saved.getId());
 
+        log.info("Resource uploaded successfully: id={}, bucket={}, key={}",
+                saved.getId(), saved.getBucket(), saved.getStorageKey());
         return new IdResponse(saved.getId());
     }
 
@@ -89,6 +97,9 @@ public class ResourceServiceImpl implements ResourceService {
 
         ResourceEntity entity = resourceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource with ID=" + id + " not found"));
+
+        log.info("Downloading resource: id={}, bucket={}, key={}",
+                id, entity.getBucket(), entity.getStorageKey());
         return mp3StorageService.download(entity.getBucket(), entity.getStorageKey());
     }
 
@@ -102,13 +113,18 @@ public class ResourceServiceImpl implements ResourceService {
             Optional<ResourceEntity> entity = resourceRepository.findById(id);
             if (entity.isPresent()) {
                 ResourceEntity resourceEntity = entity.get();
+                log.info("Deleting resource: id={}, bucket={}, key={}",
+                        id, resourceEntity.getBucket(), resourceEntity.getStorageKey());
                 mp3StorageService.remove(resourceEntity.getBucket(), resourceEntity.getStorageKey());
                 resourceRepository.deleteById(id);
                 deletedIds.add(id);
+            } else {
+                log.debug("Skip delete for missing resource id={}", id);
             }
         }
 
         songServiceClient.deleteSongMetadata(deletedIds);
+        log.info("Deleted resources: requested={}, deleted={}", ids.size(), deletedIds.size());
         return new IdsResponse(deletedIds);
     }
 
@@ -121,6 +137,7 @@ public class ResourceServiceImpl implements ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Resource with ID=" + id + " not found"));
 
         if (STORAGE_TYPE_PERMANENT.equals(entity.getStorageType())) {
+            log.info("Resource already in permanent storage, skipping move: id={}", id);
             return;
         }
 
@@ -129,6 +146,8 @@ public class ResourceServiceImpl implements ResourceService {
         String sourceKey = entity.getStorageKey();
         String targetKey = StorageKeyGenerator.generate(permanentStorage.path());
 
+        log.info("Moving resource to permanent: id={}, from={}/{}, to={}/{}",
+                id, sourceBucket, sourceKey, permanentStorage.bucket(), targetKey);
         mp3StorageService.move(sourceBucket, sourceKey, permanentStorage.bucket(), targetKey);
 
         entity.setStorageType(permanentStorage.storageType());
@@ -136,14 +155,20 @@ public class ResourceServiceImpl implements ResourceService {
         entity.setPath(permanentStorage.path());
         entity.setStorageKey(targetKey);
         resourceRepository.save(entity);
+
+        log.info("Resource moved to permanent successfully: id={}, bucket={}, key={}",
+                id, entity.getBucket(), entity.getStorageKey());
     }
 
     private StorageDto requireStorage(String storageType) {
         return storageServiceClient.getStorages().stream()
                 .filter(storage -> storageType.equals(storage.storageType()))
                 .findFirst()
-                .orElseThrow(() -> new StorageServiceException(
-                        "Storage definition not found for type=" + storageType
-                ));
+                .orElseThrow(() -> {
+                    log.error("Storage definition not found for type={}", storageType);
+                    return new StorageServiceException(
+                            "Storage definition not found for type=" + storageType
+                    );
+                });
     }
 }

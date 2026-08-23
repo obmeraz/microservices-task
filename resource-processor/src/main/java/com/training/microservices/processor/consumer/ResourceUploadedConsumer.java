@@ -23,7 +23,13 @@ public class ResourceUploadedConsumer {
     public Consumer<Long> resourceUploaded() {
         return resourceId -> {
             log.info("Received resource.uploaded event: resourceId={}", resourceId);
-            resourceProcessingService.process(resourceId);
+            try {
+                resourceProcessingService.process(resourceId);
+                log.info("Successfully processed resource.uploaded event: resourceId={}", resourceId);
+            } catch (Exception ex) {
+                log.error("Failed to process resource.uploaded event: resourceId={}", resourceId, ex);
+                throw ex;
+            }
         };
     }
 }

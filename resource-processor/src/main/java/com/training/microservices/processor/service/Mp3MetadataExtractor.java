@@ -7,12 +7,16 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 
 @Component
 public class Mp3MetadataExtractor {
+
+    private static final Logger log = LoggerFactory.getLogger(Mp3MetadataExtractor.class);
 
     private final Parser parser = new AutoDetectParser();
 
@@ -30,6 +34,8 @@ public class Mp3MetadataExtractor {
             String year = firstNonBlank(metadata, "xmpDM:releaseDate", "date", "year");
 
             if (name == null || artist == null || album == null || durationSeconds == null || year == null) {
+                log.warn("Incomplete MP3 metadata: name={}, artist={}, album={}, duration={}, year={}",
+                        name, artist, album, durationSeconds, year);
                 throw new IllegalArgumentException("Invalid MP3");
             }
 
@@ -37,6 +43,7 @@ public class Mp3MetadataExtractor {
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
+            log.error("Failed to parse MP3 metadata", ex);
             throw new IllegalArgumentException("Invalid MP3");
         }
     }

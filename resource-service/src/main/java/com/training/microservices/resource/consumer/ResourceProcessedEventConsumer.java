@@ -23,7 +23,13 @@ public class ResourceProcessedEventConsumer {
     public Consumer<Long> resourceProcessed() {
         return resourceId -> {
             log.info("Received resource.processed event: resourceId={}", resourceId);
-            resourceService.moveToPermanent(resourceId);
+            try {
+                resourceService.moveToPermanent(resourceId);
+                log.info("Successfully moved resource to permanent storage: resourceId={}", resourceId);
+            } catch (Exception ex) {
+                log.error("Failed to process resource.processed event: resourceId={}", resourceId, ex);
+                throw ex;
+            }
         };
     }
 }

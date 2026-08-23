@@ -7,6 +7,8 @@ import com.training.microservices.storageservice.entity.StorageEntity;
 import com.training.microservices.storageservice.mapper.StorageMapper;
 import com.training.microservices.storageservice.repository.StorageRepository;
 import com.training.microservices.storageservice.util.IdsParameterParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Service
 public class StorageServiceImpl implements StorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(StorageServiceImpl.class);
 
     private final StorageRepository storageRepository;
     private final StorageMapper storageMapper;
@@ -29,15 +33,19 @@ public class StorageServiceImpl implements StorageService {
     public IdResponse create(StorageDto storageDto) {
         StorageEntity entity = storageMapper.toEntity(storageDto);
         StorageEntity saved = storageRepository.save(entity);
+        log.info("Created storage: id={}, type={}, bucket={}, path={}",
+                saved.getId(), storageDto.storageType(), storageDto.bucket(), storageDto.path());
         return new IdResponse(saved.getId());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StorageDto> getAll() {
-        return storageRepository.findAll().stream()
+        List<StorageDto> storages = storageRepository.findAll().stream()
                 .map(storageMapper::toDto)
                 .toList();
+        log.debug("Fetched storages: count={}", storages.size());
+        return storages;
     }
 
     @Override
@@ -50,9 +58,12 @@ public class StorageServiceImpl implements StorageService {
             if (storageRepository.existsById(id)) {
                 storageRepository.deleteById(id);
                 deletedIds.add(id);
+            } else {
+                log.debug("Skip delete for missing storage id={}", id);
             }
         }
 
+        log.info("Deleted storages: requested={}, deleted={}", ids.size(), deletedIds.size());
         return new IdsResponse(deletedIds);
     }
 }
