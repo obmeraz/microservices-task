@@ -1,0 +1,56 @@
+{
+  "title": "API Gateway Performance",
+  "uid": "api-gateway-performance",
+  "tags": ["gateway"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Count",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "http_server_requests_seconds_count{application=\"api-gateway\"}",
+          "legendFormat": "{{method}} {{uri}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Latency (avg)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "http_server_requests_seconds_sum{application=\"api-gateway\"} / http_server_requests_seconds_count{application=\"api-gateway\"}",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "http_server_requests_seconds_count{application=\"api-gateway\",status=~\"5..\"}",
+          "legendFormat": "{{method}} {{uri}} {{status}}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

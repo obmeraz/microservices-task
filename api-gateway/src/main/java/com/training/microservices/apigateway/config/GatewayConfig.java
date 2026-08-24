@@ -30,7 +30,22 @@ public class GatewayConfig {
                 ).route(
                         "storage", r -> r.path("/storages/**")
                                 .uri("lb://" + storageServiceName)
+                ).route(
+                        "resource-prometheus", r -> r.path("/actuator/prometheus/resource-service")
+                                .filters(f -> f.setPath("/actuator/prometheus"))
+                                .uri("lb://" + resourceServiceName)
+                ).route(
+                        "song-prometheus", r -> r.path("/actuator/prometheus/song-service")
+                                .filters(f -> f.setPath("/actuator/prometheus"))
+                                .uri("lb://" + songServiceName)
+                ).route(
+                        "storage-prometheus", r -> r.path("/actuator/prometheus/storage-service")
+                                .filters(f -> f.setPath("/actuator/prometheus"))
+                                .uri("lb://" + storageServiceName)
+                ).route(
+                        "processor-prometheus", r -> r.path("/actuator/prometheus/resource-processor")
+                                .filters(f -> f.setPath("/actuator/prometheus"))
+                                .uri("lb://resource-processor")
                 ).build();
-
     }
 }
