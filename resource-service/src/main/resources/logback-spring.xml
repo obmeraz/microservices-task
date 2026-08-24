@@ -16,7 +16,7 @@
         <maxRetries>2</maxRetries>
         <sleepTime>500</sleepTime>
         <includeMdc>true</includeMdc>
-        <errorsToStderr>false</errorsToStderr>
+        <errorsToStderr>true</errorsToStderr>
         <headers>
             <header>
                 <name>Content-Type</name>
@@ -48,7 +48,7 @@
         </properties>
     </appender>
 
-    <logger name="es-error-logger" level="OFF"/>
+    <logger name="es-error-logger" level="WARN"/>
     <logger name="com.agido.logback.elasticsearch" level="WARN"/>
 
     <root level="INFO">

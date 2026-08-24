@@ -48,8 +48,11 @@
         </properties>
     </appender>
 
-    <logger name="es-error-logger" level="OFF"/>
+    <logger name="es-error-logger" level="WARN"/>
     <logger name="com.agido.logback.elasticsearch" level="WARN"/>
+    <logger name="org.springframework.cloud.gateway" level="INFO"/>
+    <logger name="org.springframework.cloud.loadbalancer" level="WARN"/>
+    <logger name="reactor.netty" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

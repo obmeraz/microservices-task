@@ -1,10 +1,13 @@
 package com.training.microservices.processor.consumer;
 
 import com.training.microservices.processor.service.ResourceProcessingService;
+import com.training.microservices.processor.trace.TraceId;
+import com.training.microservices.processor.trace.TraceIdContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
 
 import java.util.function.Consumer;
 
@@ -20,8 +23,11 @@ public class ResourceUploadedConsumer {
     }
 
     @Bean
-    public Consumer<Long> resourceUploaded() {
-        return resourceId -> {
+    public Consumer<Message<Long>> resourceUploaded() {
+        return message -> {
+            String traceId = message.getHeaders().get(TraceId.HEADER, String.class);
+            TraceIdContext.set(traceId);
+            Long resourceId = message.getPayload();
             log.info("Received resource.uploaded event: resourceId={}", resourceId);
             try {
                 resourceProcessingService.process(resourceId);
@@ -29,6 +35,8 @@ public class ResourceUploadedConsumer {
             } catch (Exception ex) {
                 log.error("Failed to process resource.uploaded event: resourceId={}", resourceId, ex);
                 throw ex;
+            } finally {
+                TraceIdContext.clear();
             }
         };
     }

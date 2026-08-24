@@ -22,6 +22,11 @@ eureka:
     prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:false}
     lease-renewal-interval-in-seconds: 5
 
+logging:
+  level:
+    org.springframework.cloud.config: WARN
+    org.springframework.web: WARN
+
 management:
   endpoints:
     web:

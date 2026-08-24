@@ -14,6 +14,7 @@ import com.training.microservices.resource.repository.ResourceRepository;
 import com.training.microservices.resource.service.Mp3StorageService;
 import com.training.microservices.resource.service.Mp3Validator;
 import com.training.microservices.resource.service.ResourceService;
+import com.training.microservices.resource.trace.TraceIdContext;
 import com.training.microservices.resource.util.ContentTypeValidator;
 import com.training.microservices.resource.util.IdValidator;
 import com.training.microservices.resource.util.IdsParameterParser;
@@ -68,6 +69,9 @@ public class ResourceServiceImpl implements ResourceService {
         }
 
         mp3Validator.validate(mp3Data);
+
+        log.info("Processing MP3 upload: traceId={}, size={} bytes",
+                TraceIdContext.get(), mp3Data.length);
 
         StorageDto stagingStorage = requireStorage(STORAGE_TYPE_STAGING);
         String storageKey = StorageKeyGenerator.generate(stagingStorage.path());
