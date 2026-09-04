@@ -2,6 +2,8 @@ package com.training.microservices.apigateway.exception;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -22,6 +24,8 @@ import java.util.Map;
 @Order(-2)
 public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalErrorWebExceptionHandler.class);
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -36,6 +40,7 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
         String message = "An unexpected error occurred.";
 
         String exceptionName = ex.getClass().getName();
+        String path = exchange.getRequest().getPath().value();
 
         if (ex instanceof ResponseStatusException responseStatusException) {
             status = HttpStatus.valueOf(responseStatusException.getStatusCode().value());
@@ -48,6 +53,12 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
             message = "The service took too long to respond or connection was refused.";
         }
 
+        if (status.is5xxServerError()) {
+            log.error("Gateway error {} on path={}: {}", status.value(), path, message, ex);
+        } else {
+            log.warn("Gateway error {} on path={}: {}", status.value(), path, message);
+        }
+
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
@@ -56,7 +67,7 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
         errorDetails.put("status", status.value());
         errorDetails.put("error", status.getReasonPhrase());
         errorDetails.put("message", message);
-        errorDetails.put("path", exchange.getRequest().getPath().value());
+        errorDetails.put("path", path);
 
         try {
             byte[] bytes = objectMapper.writeValueAsBytes(errorDetails);
@@ -64,6 +75,7 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
             DataBuffer buffer = bufferFactory.wrap(bytes);
             return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {
+            log.error("Failed to serialize gateway error response", e);
             return Mono.error(e);
         }
     }

@@ -2,6 +2,8 @@ package com.training.microservices.resource.service.impl;
 
 import com.training.microservices.resource.service.Mp3StorageService;
 import com.training.microservices.resource.util.S3ExceptionMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -16,6 +18,8 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
 public class S3Mp3StorageService implements Mp3StorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(S3Mp3StorageService.class);
 
     private final S3Client s3Client;
 
@@ -37,7 +41,9 @@ public class S3Mp3StorageService implements Mp3StorageService {
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(mp3Data));
+            log.debug("S3 upload completed: bucket={}, key={}, size={}", bucket, storageKey, mp3Data.length);
         } catch (S3Exception e) {
+            log.error("S3 upload failed: bucket={}, key={}", bucket, storageKey, e);
             throw S3ExceptionMapper.map(e, "upload");
         }
     }
@@ -56,8 +62,11 @@ public class S3Mp3StorageService implements Mp3StorageService {
             ResponseBytes<GetObjectResponse> objectBytes =
                     s3Client.getObject(getObjectRequest, ResponseTransformer.toBytes());
 
-            return objectBytes.asByteArray();
+            byte[] data = objectBytes.asByteArray();
+            log.debug("S3 download completed: bucket={}, key={}, size={}", bucket, storageKey, data.length);
+            return data;
         } catch (S3Exception e) {
+            log.error("S3 download failed: bucket={}, key={}", bucket, storageKey, e);
             throw S3ExceptionMapper.map(e, "download");
         }
     }
@@ -74,7 +83,9 @@ public class S3Mp3StorageService implements Mp3StorageService {
                     .build();
 
             s3Client.deleteObject(deleteObjectRequest);
+            log.debug("S3 delete completed: bucket={}, key={}", bucket, storageKey);
         } catch (S3Exception e) {
+            log.error("S3 delete failed: bucket={}, key={}", bucket, storageKey, e);
             throw S3ExceptionMapper.map(e, "delete");
         }
     }
@@ -95,7 +106,11 @@ public class S3Mp3StorageService implements Mp3StorageService {
                     .build();
             s3Client.copyObject(copyObjectRequest);
             remove(sourceBucket, sourceKey);
+            log.debug("S3 move completed: from={}/{} to={}/{}",
+                    sourceBucket, sourceKey, targetBucket, targetKey);
         } catch (S3Exception e) {
+            log.error("S3 move failed: from={}/{} to={}/{}",
+                    sourceBucket, sourceKey, targetBucket, targetKey, e);
             throw S3ExceptionMapper.map(e, "move");
         }
     }

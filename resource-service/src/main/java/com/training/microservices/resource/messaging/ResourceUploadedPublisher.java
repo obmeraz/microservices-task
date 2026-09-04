@@ -1,9 +1,12 @@
 package com.training.microservices.resource.messaging;
 
 import com.training.microservices.resource.exception.MessagePublishException;
+import com.training.microservices.resource.trace.TraceId;
+import com.training.microservices.resource.trace.TraceIdContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
@@ -27,11 +30,16 @@ public class ResourceUploadedPublisher {
     public void publish(Long resourceId) {
         log.info("Publishing resource.uploaded event for id={}", resourceId);
         try {
-            boolean sent = streamBridge.send("resourceUploaded-out-0", resourceId);
+            var message = MessageBuilder.withPayload(resourceId)
+                    .setHeader(TraceId.HEADER, TraceIdContext.get())
+                    .build();
+            boolean sent = streamBridge.send("resourceUploaded-out-0", message);
             if (!sent) {
+                log.warn("StreamBridge returned false for resource.uploaded event: id={}", resourceId);
                 throw new MessagePublishException(
                         "Failed to publish resource.uploaded event for id=" + resourceId);
             }
+            log.info("Published resource.uploaded event for id={}", resourceId);
         } catch (MessagePublishException ex) {
             throw ex;
         } catch (Exception ex) {

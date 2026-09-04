@@ -35,7 +35,9 @@ public class StorageServiceClient {
                     .uri("/storages")
                     .retrieve()
                     .body(STORAGE_LIST_TYPE);
-            return storages != null ? storages : List.of();
+            List<StorageDto> result = storages != null ? storages : List.of();
+            log.info("Fetched storages from Storage Service: count={}", result.size());
+            return result;
         } catch (RestClientException ex) {
             log.error("Failed to get storages from Storage Service", ex);
             throw new StorageServiceException("Failed to get storages", ex);
