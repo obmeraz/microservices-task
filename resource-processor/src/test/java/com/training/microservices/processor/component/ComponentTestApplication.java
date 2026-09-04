@@ -12,7 +12,8 @@ import org.springframework.context.annotation.FilterType;
                 "com.training.microservices.processor.config",
                 "com.training.microservices.processor.consumer",
                 "com.training.microservices.processor.service",
-                "com.training.microservices.processor.mapper"
+                "com.training.microservices.processor.mapper",
+                "com.training.microservices.processor.publisher"
         },
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE,

@@ -30,8 +30,8 @@ public class E2eStepDefinitions {
             .connectTimeout(Duration.ofSeconds(3))
             .build();
 
-    private static final String RESOURCE_SERVICE_BASE_URL = "http://127.0.0.1:8080";
-    private static final String SONG_SERVICE_BASE_URL = "http://127.0.0.1:8081";
+    private static final String RESOURCE_SERVICE_BASE_URL = "http://127.0.0.1:8083";
+    private static final String SONG_SERVICE_BASE_URL = "http://127.0.0.1:8083";
 
     private Long uploadedResourceId;
 
