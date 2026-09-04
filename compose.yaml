@@ -35,6 +35,29 @@ services:
       eureka-server:
         condition: service_healthy
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: [ "start-dev", "--import-realm" ]
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: ${KEYCLOAK_PORT}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-microservices.json:/opt/keycloak/data/import/realm-microservices.json:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
   api-gateway:
     build: ./api-gateway
     ports:
@@ -50,10 +73,14 @@ services:
       EUREKA_PREFER_IP_ADDRESS: "true"
       SPRING_CLOUD_CONFIG_URI: ${SPRING_CLOUD_CONFIG_URI}
       ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI}
     depends_on:
       eureka-server:
         condition: service_healthy
       config-server:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
 
   resource-db:
